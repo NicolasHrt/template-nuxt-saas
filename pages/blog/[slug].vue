@@ -2,6 +2,10 @@
 import { withoutTrailingSlash, joinURL } from 'ufo'
 import type { BlogPost } from '~/types'
 
+definePageMeta({
+  layout: 'landing'
+})
+
 const route = useRoute()
 
 const { data: post } = await useAsyncData(route.path, () => queryContent<BlogPost>(route.path).findOne())

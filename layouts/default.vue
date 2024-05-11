@@ -1,27 +1,22 @@
 <script setup lang="ts">
-import type { ParsedContent } from '@nuxt/content/dist/runtime/types'
+import Sidebar from '~/components/Dashboard/Sidebar.vue'
 
-const { data: navigation } = await useAsyncData('navigation', () => fetchContentNavigation(), { default: () => [] })
-const { data: files } = useLazyFetch<ParsedContent[]>('/api/search.json', { default: () => [], server: false })
-
-provide('navigation', navigation)
+const { isNotificationsSlideoverOpen } = useDashboard()
 </script>
 
 <template>
-  <div>
-    <AppHeader />
-
-    <UMain>
+  <UDashboardLayout>
+    <Sidebar />
+    <UDashboardPage>
       <slot />
-    </UMain>
-
-    <AppFooter />
-
-    <ClientOnly>
-      <LazyUContentSearch
-        :files="files"
-        :navigation="navigation"
-      />
-    </ClientOnly>
-  </div>
+    </UDashboardPage>
+    <UDashboardSlideover
+      v-model="isNotificationsSlideoverOpen"
+      title="Notifications"
+    />
+  </UDashboardLayout>
 </template>
+
+<style scoped>
+
+</style>

@@ -35,8 +35,9 @@ const providers = [{
   }
 }]
 
-function onSubmit(data: any) {
+async function onSubmit(data: any) {
   console.log('Submitted', data)
+  await navigateTo('/app')
 }
 </script>
 

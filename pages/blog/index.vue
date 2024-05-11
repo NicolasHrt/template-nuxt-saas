@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { BlogPost } from '~/types'
 
+definePageMeta({
+  layout: 'landing'
+})
+
 const { data: page } = await useAsyncData('blog', () => queryContent('/blog').findOne())
 if (!page.value) {
   throw createError({ statusCode: 404, statusMessage: 'Page not found', fatal: true })
