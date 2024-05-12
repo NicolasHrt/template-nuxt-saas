@@ -13,6 +13,8 @@ const links = [{
   label: 'Blog',
   to: '/blog'
 }]
+
+const user = useSupabaseUser()
 </script>
 
 <template>
@@ -27,18 +29,28 @@ const links = [{
 
     <template #right>
       <UButton
-        label="Sign in"
-        color="gray"
-        to="/login"
+        v-if="user"
+        label="Dashboard"
+        to="/app"
       />
-      <UButton
-        label="Sign up"
-        icon="i-heroicons-arrow-right-20-solid"
-        trailing
-        color="black"
-        to="/signup"
-        class="hidden lg:flex"
-      />
+      <div
+        v-else
+        class="flex gap-1.5"
+      >
+        <UButton
+          label="Sign in"
+          color="gray"
+          to="/login"
+        />
+        <UButton
+          label="Sign up"
+          icon="i-heroicons-arrow-right-20-solid"
+          trailing
+          color="black"
+          to="/signup"
+          class="hidden lg:flex"
+        />
+      </div>
     </template>
 
     <template #panel>

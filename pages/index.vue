@@ -22,10 +22,20 @@ useSeoMeta({
 definePageMeta({
   layout: 'landing'
 })
+
+// const user = useSupabaseUser()
+// const router = useRouter()
+
+// watchEffect(() => {
+//   if (user.value) {
+//     router.push('/app')
+//   }
+// })
 </script>
 
 <template>
   <div v-if="page">
+    {{ user }}
     <ULandingHero
       :title="page.hero.title"
       :description="page.hero.description"

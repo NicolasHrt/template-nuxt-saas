@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { signOut } from '~/utils/auth'
+
 const model = defineModel({
   type: Boolean
 })
@@ -7,14 +9,25 @@ const toast = useToast()
 
 const loading = ref(false)
 
-function onDelete() {
+async function onDelete() {
   loading.value = true
+  const { data: response } = await useFetch('/api/user', { method: 'DELETE' })
 
-  setTimeout(() => {
-    loading.value = false
-    toast.add({ icon: 'i-heroicons-check-circle', title: 'Your account has been deleted', color: 'red' })
-    model.value = false
-  }, 2000)
+  if (response.value.status === 204) {
+    toast.add({
+      title: 'Account deleted',
+      icon: 'i-heroicons-check-circle'
+    })
+    // remove in local storage
+    localStorage.clear()
+    await navigateTo('/login')
+  } else {
+    toast.add({
+      title: 'Error',
+      description: 'An error occurred while deleting your account'
+    })
+  }
+  loading.value = false
 }
 </script>
 
@@ -37,15 +50,14 @@ function onDelete() {
   >
     <template #footer>
       <UButton
+        color="white"
+        label="Cancel"
+        @click="model = false"
+      />  <UButton
         color="red"
         label="Delete"
         :loading="loading"
         @click="onDelete"
-      />
-      <UButton
-        color="white"
-        label="Cancel"
-        @click="model = false"
       />
     </template>
   </UDashboardModal>

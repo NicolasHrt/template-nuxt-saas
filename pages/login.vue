@@ -1,4 +1,9 @@
 <script setup lang="ts">
+import { z } from 'zod'
+import type { FormSubmitEvent } from '#ui/types'
+
+import { authWithGoogle } from '~/utils/auth'
+
 definePageMeta({
   layout: 'auth'
 })
@@ -19,26 +24,38 @@ const fields = [{
   placeholder: 'Enter your password'
 }]
 
-const validate = (state: any) => {
-  const errors = []
-  if (!state.email) errors.push({ path: 'email', message: 'Email is required' })
-  if (!state.password) errors.push({ path: 'password', message: 'Password is required' })
-  return errors
+const schema = z.object({
+  email: z.string().email('Invalid email'),
+  password: z.string().min(6, 'Must be at least 6 characters')
+})
+
+type Schema = z.output<typeof schema>
+
+const error = ref('')
+
+async function onSubmit(event: FormSubmitEvent<Schema>) {
+  error.value = ''
+
+  const supabase = useSupabaseClient()
+  const { error: errorAuth } = await supabase.auth.signInWithPassword({
+    email: event.email,
+    password: event.password
+  })
+  if (errorAuth) {
+    error.value = errorAuth.message
+  } else {
+    await navigateTo('/app')
+  }
 }
 
 const providers = [{
-  label: 'Continue with GitHub',
-  icon: 'i-simple-icons-github',
+  label: 'Continue with Google',
+  icon: 'i-simple-icons-google',
   color: 'white' as const,
-  click: () => {
-    console.log('Redirect to GitHub')
+  click: async () => {
+    await authWithGoogle()
   }
 }]
-
-async function onSubmit(data: any) {
-  console.log('Submitted', data)
-  await navigateTo('/app')
-}
 </script>
 
 <!-- eslint-disable vue/multiline-html-element-content-newline -->
@@ -47,7 +64,7 @@ async function onSubmit(data: any) {
   <UCard class="max-w-sm w-full bg-white/75 dark:bg-white/5 backdrop-blur">
     <UAuthForm
       :fields="fields"
-      :validate="validate"
+      :schema="schema"
       :providers="providers"
       title="Welcome back"
       align="top"
@@ -62,7 +79,14 @@ async function onSubmit(data: any) {
           class="text-primary font-medium"
         >Sign up</NuxtLink>.
       </template>
-
+      <template #validation>
+        <UAlert
+          v-if="error"
+          color="red"
+          icon="i-heroicons-information-circle-20-solid"
+          :title="error"
+        />
+      </template>
       <template #password-hint>
         <NuxtLink
           to="/"

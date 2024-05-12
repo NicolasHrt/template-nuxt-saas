@@ -1,49 +1,53 @@
 <script setup lang="ts">
-import type { FormError, FormSubmitEvent } from '#ui/types'
+import { z } from 'zod'
+
+import type { FormSubmitEvent } from '#ui/types'
 import DeleteAccountModal from '~/components/Dashboard/Settings/DeleteAccountModal.vue'
 
-const fileRef = ref<HTMLInputElement>()
 const isDeleteAccountModalOpen = ref(false)
+const user = useSupabaseUser()
+const supabase = useSupabaseClient()
 
 const state = reactive({
-  name: 'Benjamin Canac',
-  email: 'ben@nuxtlabs.com',
-  username: 'benjamincanac',
-  avatar: '',
-  bio: '',
-  password_current: '',
-  password_new: ''
+  full_name: user.value.user_metadata.full_name,
+  email: user.value.email,
+  password_new: '',
+  password_confirm: ''
 })
 
 const toast = useToast()
 
-function validate(state: any): FormError[] {
-  const errors = []
-  if (!state.name) errors.push({ path: 'name', message: 'Please enter your name.' })
-  if (!state.email) errors.push({ path: 'email', message: 'Please enter your email.' })
-  if ((state.password_current && !state.password_new) || (!state.password_current && state.password_new)) errors.push({ path: 'password', message: 'Please enter a valid password.' })
-  return errors
-}
+const schema = z.object({
+  full_name: z.string().min(2, 'Full name is required'),
+  email: z.string().email('Invalid email')
+})
 
-function onFileChange(e: Event) {
-  const input = e.target as HTMLInputElement
+type Schema = z.output<typeof schema>
 
-  if (!input.files?.length) {
+const error = ref('')
+
+async function onSubmit(event: FormSubmitEvent<Schema>) {
+  const dataToSend = {
+    email: event.data.email,
+    data: {
+      full_name: event.data.full_name
+    }
+  }
+  if (event.data.password_new && event.data.password_new === event.data.password_confirm) {
+    dataToSend['password'] = event.data.password_new
+  } else if (event.data.password_new && event.data.password_new !== event.data.password_confirm) {
+    error.value = 'Passwords do not match'
     return
   }
-
-  state.avatar = URL.createObjectURL(input.files[0])
-}
-
-function onFileClick() {
-  fileRef.value?.click()
-}
-
-async function onSubmit(event: FormSubmitEvent<any>) {
-  // Do something with data
-  console.log(event.data)
-
-  toast.add({ title: 'Profile updated', icon: 'i-heroicons-check-circle' })
+  const { error: errorUser } = await supabase.auth.updateUser(dataToSend)
+  event.data.password_new = ''
+  event.data.password_confirm = ''
+  console.log(errorUser)
+  if (errorUser) {
+    error.value = errorUser.message
+  } else {
+    toast.add({ title: 'Profile updated', icon: 'i-heroicons-check-circle' })
+  }
 }
 </script>
 
@@ -62,7 +66,7 @@ async function onSubmit(event: FormSubmitEvent<any>) {
 
     <UForm
       :state="state"
-      :validate="validate"
+      :schema="schema"
       :validate-on="['submit']"
       @submit="onSubmit"
     >
@@ -70,6 +74,12 @@ async function onSubmit(event: FormSubmitEvent<any>) {
         title="Profile"
         description="This information will be displayed publicly so be careful what you share."
       >
+        <UAlert
+          v-if="error"
+          color="red"
+          icon="i-heroicons-information-circle-20-solid"
+          :title="error"
+        />
         <template #links>
           <UButton
             type="submit"
@@ -79,15 +89,16 @@ async function onSubmit(event: FormSubmitEvent<any>) {
         </template>
 
         <UFormGroup
-          name="name"
-          label="Name"
+          name="full_name"
+          label="Full name"
           description="Will appear on receipts, invoices, and other communication."
           required
           class="grid grid-cols-2 gap-2 items-center"
           :ui="{ container: '' }"
         >
           <UInput
-            v-model="state.name"
+            v-model="state.full_name"
+            type="text"
             autocomplete="off"
             icon="i-heroicons-user"
             size="md"
@@ -99,12 +110,17 @@ async function onSubmit(event: FormSubmitEvent<any>) {
           label="Email"
           description="Used to sign in, for email receipts and product updates."
           required
-          class="grid grid-cols-2 gap-2"
+
+          class="
+          grid
+          grid-cols-2
+          gap-2"
           :ui="{ container: '' }"
         >
           <UInput
             v-model="state.email"
             type="email"
+            :disabled="user.app_metadata.provider !== 'email'"
             autocomplete="off"
             icon="i-heroicons-envelope"
             size="md"
@@ -112,71 +128,7 @@ async function onSubmit(event: FormSubmitEvent<any>) {
         </UFormGroup>
 
         <UFormGroup
-          name="username"
-          label="Username"
-          description="Your unique username for logging in and your profile URL."
-          required
-          class="grid grid-cols-2 gap-2"
-          :ui="{ container: '' }"
-        >
-          <UInput
-            v-model="state.username"
-            type="username"
-            autocomplete="off"
-            size="md"
-            input-class="ps-[77px]"
-          >
-            <template #leading>
-              <span class="text-gray-500 dark:text-gray-400 text-sm">nuxt.com/</span>
-            </template>
-          </UInput>
-        </UFormGroup>
-
-        <UFormGroup
-          name="avatar"
-          label="Avatar"
-          class="grid grid-cols-2 gap-2"
-          help="JPG, GIF or PNG. 1MB Max."
-          :ui="{ container: 'flex flex-wrap items-center gap-3', help: 'mt-0' }"
-        >
-          <UAvatar
-            :src="state.avatar"
-            :alt="state.name"
-            size="lg"
-          />
-
-          <UButton
-            label="Choose"
-            color="white"
-            size="md"
-            @click="onFileClick"
-          />
-
-          <input
-            ref="fileRef"
-            type="file"
-            class="hidden"
-            accept=".jpg, .jpeg, .png, .gif"
-            @change="onFileChange"
-          >
-        </UFormGroup>
-
-        <UFormGroup
-          name="bio"
-          label="Bio"
-          description="Brief description for your profile. URLs are hyperlinked."
-          class="grid grid-cols-2 gap-2"
-          :ui="{ container: '' }"
-        >
-          <UTextarea
-            v-model="state.bio"
-            :rows="5"
-            autoresize
-            size="md"
-          />
-        </UFormGroup>
-
-        <UFormGroup
+          v-if="user.app_metadata.provider === 'email'"
           name="password"
           label="Password"
           description="Confirm your current password before setting a new one."
@@ -184,19 +136,19 @@ async function onSubmit(event: FormSubmitEvent<any>) {
           :ui="{ container: '' }"
         >
           <UInput
-            id="password"
-            v-model="state.password_current"
-            type="password"
-            placeholder="Current password"
-            size="md"
-          />
-          <UInput
             id="password_new"
             v-model="state.password_new"
             type="password"
             placeholder="New password"
             size="md"
-            class="mt-2"
+            class="mb-2"
+          />
+          <UInput
+            id="password_confirm"
+            v-model="state.password_confirm"
+            type="password"
+            placeholder="Confirm new password"
+            size="md"
           />
         </UFormGroup>
       </UDashboardSection>

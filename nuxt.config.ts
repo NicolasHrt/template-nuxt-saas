@@ -1,4 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+import type { NuxtPage } from 'nuxt/schema'
+
 export default defineNuxtConfig({
   extends: [process.env.NUXT_UI_PRO_PATH || '@nuxt/ui-pro'],
   modules: [
@@ -10,7 +12,8 @@ export default defineNuxtConfig({
     '@nuxthq/studio',
     '@vueuse/nuxt',
     'nuxt-og-image',
-    '@pinia/nuxt'
+    '@pinia/nuxt',
+    '@nuxtjs/supabase'
   ],
   hooks: {
     // Define `@nuxt/ui` components as global to use them in `.md` (feel free to add those you need)
@@ -18,6 +21,22 @@ export default defineNuxtConfig({
       const globals = components.filter(c => ['UButton'].includes(c.pascalName))
 
       globals.forEach(c => c.global = true)
+    },
+    'pages:extend'(pages) {
+      function setMiddleware(pages: NuxtPage[]) {
+        for (const page of pages) {
+          if (page.name?.includes('app')) {
+            page.meta ||= {}
+            // Note that this will override any middleware set in `definePageMeta` in the page
+            page.meta.middleware = ['auth']
+          }
+          if (page.children) {
+            setMiddleware(page.children)
+          }
+        }
+      }
+
+      setMiddleware(pages)
     }
   },
   ui: {
@@ -40,5 +59,11 @@ export default defineNuxtConfig({
         braceStyle: '1tbs'
       }
     }
+  },
+  supabase: {
+    redirect: false,
+    url: process.env.NUXT_PUBLIC_SUPABASE_URL,
+    key: process.env.NUXT_PUBLIC_SUPABASE_KEY,
+    serviceKey: process.env.NUXT_PUBLIC_SUPABASE_SERVICE_KEY
   }
 })
